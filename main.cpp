@@ -1,43 +1,22 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <functions.cpp>
+#include <iomanip>
 
 int main()
 {
     std::string stringInput;
     std::vector <float> numbsFromString;
-    bool canSolve = false;
+    enterEquation (stringInput);
 
-    do{
-        std::cout << "Enter your equation: ";
-        std::getline(std::cin, stringInput);
-        for (unsigned i = 0; i < stringInput.size(); i++){
-            if (stringInput[i] <= ')' || stringInput[i] >= ':'){
-                std::cout << "I dont know what is " << stringInput[i] << ".\nTry again.\n";
-                break;
-            }
-            if (stringInput[i] == '/' && stringInput[i+1] == '0'){
-                std::cout << "You cant divide by zero.\nTry again.\n";
-                break;
-            }
+    std::vector <int> operationsFromString; /* 0 - nothing,
+                                               1 - "*",
+                                               2 - "/" */
 
-            if ( stringInput[i] == stringInput.back())
-                canSolve = true;
-        }
-    }while (!canSolve);
-
-    std::vector <int> operationsFromString;
-    /* 0 - nothing,
-      1 - "*",
-      2 - "/" */
     for (unsigned i = 0; i < stringInput.size(); i++){
         if (stringInput[i] >= '0' && stringInput[i] <= '9'){
-            float numb = 0.f;
-            while (stringInput[i] >= '0' && stringInput[i] <= '9'){
-                numb = numb * 10.f + (stringInput[i] - '0');
-                i++;
-            }
-            numbsFromString.emplace_back(numb);
+            numbsFromString.emplace_back(fromStrToFloat(stringInput, i));
             operationsFromString.emplace_back(0);
             i--;
         }
@@ -47,25 +26,31 @@ int main()
                 break;
 
             case '-':
-                i++;
-                {float numb = 0.f;
-                while (stringInput[i] >= '0' && stringInput[i] <= '9'){
-                    numb = numb * 10.f + (stringInput[i] - '0');
-                    i++;
+                if (stringInput[i+1] == '-'){
+                    i += 2;
+                    numbsFromString.emplace_back(fromStrToFloat(stringInput, i) * (-1));
+                    operationsFromString.emplace_back(0);
+                    i--;
                 }
-                numbsFromString.emplace_back(-numb);}
-                operationsFromString.emplace_back(0);
-                i--;
                 break;
 
             case '*':
-                operationsFromString.emplace_back(1);
-                numbsFromString.emplace_back(0);
+                if ((stringInput[i+1] >= '0' && stringInput[i+1] <= '9') || (stringInput[i+1] == '-' && stringInput[i+2] >= '0' && stringInput[i+2] <= '9') ){
+                    operationsFromString.emplace_back(1);
+                    numbsFromString.emplace_back(0);
+                }
                 break;
 
             case '/':
-                operationsFromString.emplace_back(2);
-                numbsFromString.emplace_back(0);
+                if ((stringInput[i+1] >= '0' && stringInput[i+1] <= '9') || (stringInput[i+1] == '-' && stringInput[i+2] >= '0' && stringInput[i+2] <= '9') ){
+                    operationsFromString.emplace_back(2);
+                    numbsFromString.emplace_back(0);
+                }
+                break;
+
+            case '.' | ',':
+                numbsFromString.emplace_back(fromStrToFloat(stringInput, i));
+                operationsFromString.emplace_back(0);
                 break;
 
             default:
@@ -75,26 +60,26 @@ int main()
         }
     }
 
-    for (unsigned i = 0; i < operationsFromString.size(); i++){
+    for (unsigned i = 1; i < operationsFromString.size(); i++){
         if (operationsFromString[i] == 1){
             numbsFromString[i-1] =  numbsFromString[i-1] * numbsFromString[i+1];
-            numbsFromString.erase(numbsFromString.begin() + i, numbsFromString.begin() + i + 2);
-            operationsFromString.erase(operationsFromString.begin() + i, operationsFromString.begin() + i + 2);
-            i--;
+            eraseCurrentAndNext2Blocks(numbsFromString, i);
+            eraseCurrentAndNext2Blocks(operationsFromString, i);
         }
-    }
-    for (unsigned i = 0; i < operationsFromString.size(); i++){
-        if (operationsFromString[i] == 2){
-            numbsFromString[i-1] = numbsFromString[i-1] / numbsFromString[i+1];
-            numbsFromString.erase(numbsFromString.begin() + i, numbsFromString.begin() + i + 2);
-            operationsFromString.erase(operationsFromString.begin() + i, operationsFromString.begin() + i + 2);
-            i--;
+        else if (operationsFromString[i] == 2){
+            float epsilon = 1e-5;
+            if (std::abs(numbsFromString[i+1] - 0) > epsilon) {
+                numbsFromString[i-1] = numbsFromString[i-1] / numbsFromString[i+1];}
+            else{
+                std::cout<< "You cant divide by zero."; return 0;}
+            eraseCurrentAndNext2Blocks(numbsFromString, i);
+            eraseCurrentAndNext2Blocks(operationsFromString, i);
         }
     }
 
     float result = 0;
-    for (unsigned i = 0; i < numbsFromString.size(); i++)
-        result += numbsFromString[i];
+    for (auto numb : numbsFromString)
+        result += numb;
 
     std::cout << "Result is " << result << std::endl;
     return 0;
